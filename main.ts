@@ -1,35 +1,37 @@
-// Entry for make.fun's "Sum up 26 November's world news in one image" bounty.
-// The whole entry is the picture: entry.png sitting next to this file. The program
-// places an exact copy of it in the grader's output directory, byte for byte, so
-// the judge is shown precisely the file in this repository. Nothing is drawn,
-// re-encoded, resized or fetched here; the run needs no network at all.
+// news-image-20261126 — the day's world news as one front page, for make.fun.
+// The picture is entry.png, held beside this file. This program moves that
+// picture into the grader's output folder exactly as it stands, so the judge
+// sees the repository's own bytes. Nothing is drawn or downloaded here; the
+// run uses Node 22 and the standard library only, with no network.
 //
-// Try it locally:
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+//   Run it: MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const picture = join(here, 'entry.png');
-const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
-const MAX_BYTES = 1048576;
+const MAX_BYTES = 1 << 20;
 
-if (!existsSync(picture)) {
-  console.error('entry.png is missing next to main.ts');
-  process.exit(1);
+function abort(message) {
+  console.error(`aborting: ${message}`);
+  process.exit(1); // stop the run here
 }
 
-const bytes = statSync(picture).size;
-if (bytes === 0 || bytes > MAX_BYTES) {
-  console.error(`entry.png must be 1 to ${MAX_BYTES} bytes, got ${bytes}`);
-  process.exit(1);
+function main() {
+  const folder = import.meta.dirname;
+  const picture = join(folder, 'entry.png');
+  const target = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+  if (!existsSync(picture)) {
+    abort('entry.png is not beside main.ts');
+  }
+  const bytes = readFileSync(picture);
+  if (bytes.length === 0 || bytes.length > MAX_BYTES) {
+    abort(`entry.png must hold 1 to ${MAX_BYTES} bytes, found ${bytes.length}`);
+  }
+  mkdirSync(target, { recursive: true });
+  // (Revised: write the held bytes out unchanged — no re-encode, no resize,
+  //  no added metadata — so both runs produce the same file.)
+  writeFileSync(join(target, 'entry.png'), bytes);
+  console.log(`wrote ${bytes.length} bytes to ${join(target, 'entry.png')}`);
 }
 
-mkdirSync(outputDir, { recursive: true });
-// A plain copy keeps the run deterministic: both runs write the same bytes.
-// (Revised: the copy must not re-encode the image, resize it, or add any metadata;
-//  the file in the repository is already the exact 1024x1024 JPEG the judge sees.)
-copyFileSync(picture, join(outputDir, 'entry.png'));
-console.log(`entry.png (${bytes} bytes) copied to ${join(outputDir, 'entry.png')}`);
+main();
